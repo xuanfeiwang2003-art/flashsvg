@@ -1,0 +1,138 @@
+/* SVG-specific details: purple proposals, teal verified continuations. */
+:root {
+  --accent-cyan: #16a6b6;
+  --teal-ink: #117785;
+  --teal-soft: #edf9f9;
+  --technical-font: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+}
+
+.hero::before {
+  background: radial-gradient(ellipse at 15% 33%, #e9ddff88, transparent 44%),
+    radial-gradient(ellipse at 87% 36%, #d8f5f575, transparent 43%),
+    radial-gradient(ellipse at 49% 2%, #e9e6ff60, transparent 53%);
+}
+.hero-vector { color: #8d74d9; opacity: .5; }
+.hero-vector.vector-right { color: #1698a8; opacity: .46; }
+.hero-vector .vector-curve {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: vector-draw 1.2s cubic-bezier(.3, .1, .3, 1) both;
+}
+.hero-vector.vector-right .vector-curve { animation-delay: .1s; }
+.hero-vector .vector-guides { animation: vector-guides .45s ease .65s both; }
+.hero-vector .vector-anchors { animation: vector-anchors .4s ease .9s both; }
+.hero-vector.vector-right .vector-anchors { animation-delay: 1s; }
+@keyframes vector-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes vector-guides {
+  from { opacity: 0; }
+  to { opacity: .5; }
+}
+@keyframes vector-anchors {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.metrics {
+  background: linear-gradient(110deg, #faf8ff, #fff 52%, #f0faf9);
+  border-color: #e4e0ee;
+}
+.metrics .metric-value {
+  font-family: var(--technical-font);
+  font-size: clamp(21px, 2.65vw, 34px);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -1.3px;
+}
+.metrics .metric-value span { color: #84749e; }
+.metrics > div:first-child .metric-value,
+.metrics > div:last-child .metric-value { color: var(--teal-ink); }
+.metrics > div:first-child .metric-value span,
+.metrics > div:last-child .metric-value span { color: var(--teal-ink); }
+.metric-title { letter-spacing: .1px; }
+tbody td, .bar-row strong { font-family: var(--technical-font); font-variant-numeric: tabular-nums; }
+.bar-verified { background: linear-gradient(90deg, #168b9b, #28b2ba); }
+.bar-row:has(.bar-verified) strong { color: var(--teal-ink); }
+
+.method-section {
+  background: linear-gradient(135deg, #f8f5ff, #faf9fd 55%, #f1f9f9);
+}
+.method-steps { --flow-gap: 24px; gap: var(--flow-gap); }
+.method-steps .step-number { font-family: var(--technical-font); }
+.method-connector {
+  display: block;
+  position: absolute;
+  pointer-events: none;
+  top: 37px;
+  right: calc(-1 * var(--flow-gap) - 1px);
+  width: var(--flow-gap);
+  height: 1px;
+  background: #bba9df;
+}
+.method-connector::after {
+  content: '';
+  position: absolute;
+  right: 2px;
+  top: -3px;
+  width: 7px;
+  height: 7px;
+  border-top: 1px solid #a28bc9;
+  border-right: 1px solid #a28bc9;
+  transform: rotate(45deg);
+}
+.method-steps article:nth-child(2) .method-connector {
+  background: linear-gradient(90deg, #bba9df, #7bbdc2);
+}
+.method-steps article:nth-child(2) .method-connector::after { border-color: #65a9b1; }
+.method-steps article:last-child::before {
+  background: linear-gradient(90deg, #8f76d7, #16a6b6);
+}
+.method-steps article:last-child .step-number {
+  color: var(--teal-ink);
+  background: var(--teal-soft);
+  border-color: #c9e4e6;
+}
+@media (hover: hover) and (pointer: fine) {
+  .method-steps article:last-child:hover { border-color: #a7d3d7; box-shadow: 0 12px 28px #197d8918; }
+  .method-steps article:last-child:hover .step-number {
+    background: var(--teal-ink);
+    border-color: var(--teal-ink);
+    color: #fff;
+    box-shadow: 0 4px 10px #11778524;
+  }
+  .method-steps article:last-child:hover h3 { color: var(--teal-ink); }
+}
+@media (max-width: 900px) and (min-width: 651px) {
+  .hero-vector { width: 135px; opacity: .34; }
+  .hero-vector.vector-right { opacity: .3; }
+  .method-steps { --flow-gap: 20px; }
+}
+@media (max-width: 650px) {
+  .metrics .metric-value { font-size: clamp(25px, 7.2vw, 31px); }
+  .method-steps { --flow-gap: 24px; }
+  .method-connector {
+    top: auto;
+    bottom: calc(-1 * var(--flow-gap));
+    right: auto;
+    left: 33px;
+    width: 1px;
+    height: calc(var(--flow-gap) - 2px);
+    background: #c7b8e2;
+  }
+  .method-connector::after {
+    top: auto;
+    right: -3px;
+    bottom: 3px;
+    transform: rotate(135deg);
+  }
+  .method-steps article:nth-child(2) .method-connector {
+    background: linear-gradient(180deg, #bba9df, #7bbdc2);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-vector .vector-curve,
+  .hero-vector .vector-guides,
+  .hero-vector .vector-anchors { animation: none !important; }
+}

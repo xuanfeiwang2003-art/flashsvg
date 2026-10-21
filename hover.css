@@ -1,0 +1,129 @@
+/* Pointer feedback uses transforms, so surrounding content stays in place. */
+.method-steps article,
+.teaser > figure,
+.qualitative-gallery .comparison-figure,
+.metrics,
+.pipeline-figure,
+.resource-button,
+.segmented button,
+#pipeline-lab.pipeline-lab .pipeline-play,
+#pipeline-lab.pipeline-lab .pipeline-stage-tab {
+  transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease,
+    background-color .3s ease, color .3s ease;
+}
+.method-steps .step-number,
+.method-steps h3 {
+  transition: color .3s ease, background-color .3s ease, border-color .3s ease, box-shadow .3s ease;
+}
+.figure-button > img {
+  transform-origin: center;
+  transition: transform .3s ease;
+}
+.nav-wrap nav a { position: relative; }
+.nav-wrap nav a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -7px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent-gradient);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform .25s ease;
+}
+.nav-wrap nav a:focus-visible::after { transform: scaleX(1); }
+.figure-button:focus-visible,
+.resource-button:focus-visible,
+.segmented button:focus-visible {
+  outline-color: #6d5bd0;
+  box-shadow: 0 0 0 4px #6d5bd015;
+}
+@media (hover: hover) and (pointer: fine) {
+  .method-steps article:hover {
+    transform: translateY(-5px);
+    border-color: #c5b6ed;
+    background-color: #fff;
+    box-shadow: 0 12px 28px #5c469c18;
+  }
+  .method-steps article:hover .step-number {
+    background-color: #6d5bd0;
+    border-color: #6d5bd0;
+    color: #fff;
+    box-shadow: 0 4px 10px #6d5bd024;
+  }
+  .method-steps article:hover h3 { color: #6d5bd0; }
+  .teaser > figure:hover,
+  .qualitative-gallery .comparison-figure:hover {
+    transform: translateY(-4px);
+    border-color: #c5b6ed;
+    box-shadow: 0 14px 34px #5c469c18;
+  }
+  .figure-button:hover img { transform: scale(1.012); }
+  .pipeline-figure:hover {
+    transform: translateY(-3px);
+    border-color: #c5b6ed;
+    box-shadow: 0 10px 25px #5c469c15;
+  }
+  .metrics:hover {
+    transform: translateY(-3px);
+    border-color: #cec2ec;
+    box-shadow: 0 10px 28px #5c469c12;
+  }
+  .resource-button:not([aria-disabled="true"]):hover,
+  .resource-button[aria-disabled="true"]:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 22px #6d5bd030;
+  }
+  .resource-button[aria-disabled="true"]:hover {
+    border-color: #b7a4e6;
+    background: linear-gradient(110deg, #eee8ff, #f3efff);
+    color: #5d49bf;
+  }
+  .segmented button:not([aria-pressed="true"]):hover {
+    transform: translateY(-1px);
+    color: #6d5bd0;
+    background-color: #f3efff;
+    box-shadow: 0 3px 8px #6d5bd012;
+  }
+  #pipeline-lab.pipeline-lab .pipeline-stage-tab:not([aria-selected="true"]):hover {
+    background-color: #f3efff;
+    color: #6d5bd0;
+    box-shadow: inset 0 -2px 0 #b9a8e8;
+  }
+  #pipeline-lab.pipeline-lab .pipeline-play:not(:disabled):hover {
+    transform: translateY(-2px);
+    border-color: #b5a0e6;
+    box-shadow: 0 6px 15px #6d5bd020;
+  }
+  .nav-wrap nav a:hover::after { transform: scaleX(1); }
+}
+@media (hover: none), (pointer: coarse) {
+  .resource-button:not([aria-disabled="true"]):hover,
+  .resource-button[aria-disabled="true"]:hover,
+  #pipeline-lab.pipeline-lab .pipeline-play:hover {
+    transform: none;
+    box-shadow: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .method-steps article,
+  .method-steps .step-number,
+  .method-steps h3,
+  .teaser > figure,
+  .qualitative-gallery .comparison-figure,
+  .metrics,
+  .pipeline-figure,
+  .figure-button > img,
+  .resource-button,
+  .segmented button,
+  #pipeline-lab.pipeline-lab .pipeline-play,
+  #pipeline-lab.pipeline-lab .pipeline-stage-tab {
+    transition: none !important;
+    transform: none !important;
+  }
+  .nav-wrap nav a::after { transition: none !important; }
+}
+
+#pipeline-lab.pipeline-lab .pipeline-stage-tab:focus-visible{outline-color:#6d5bd0;outline-offset:-4px}
