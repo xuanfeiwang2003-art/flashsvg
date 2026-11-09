@@ -1,127 +1,239 @@
-'use strict';
+(() => {
+  'use strict';
+  const $ = (s, root = document) => root.querySelector(s);
+  const $$ = (s, root = document) => [...root.querySelectorAll(s)];
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+  let paused = reduce.matches;
+  let language = 'en';
+  try { language = localStorage.getItem('flashsvg-language') || 'en'; } catch (_) {}
+  const isZh = () => document.documentElement.lang === 'zh';
 
-// Each project resource remains unavailable until its own URL is configured.
-const resourceConfig = window.FLASHSVG_CONFIG || {};
-const asUrlSetting = value => typeof value === 'string' ? value.trim() : '';
-let availableResources = 0;
-for (const link of document.querySelectorAll('[data-resource]')) {
-  const key = link.dataset.resource;
-  const label = {code:'Code',paper:'Paper',model:'Model'}[key];
-  const setting = key === 'code'
-    ? asUrlSetting(resourceConfig.codeUrl) || asUrlSetting(resourceConfig.repositoryUrl)
-    : asUrlSetting(resourceConfig[key + 'Url']);
-  if (setting) {
-    try {
-      const url = new URL(setting);
-      if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) throw new Error('Expected an HTTP(S) URL.');
-      link.href = url.href;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.removeAttribute('aria-disabled');
-      link.removeAttribute('tabindex');
-      link.setAttribute('aria-label', label + ' (opens in a new tab)');
-      link.querySelector('.resource-status').hidden = true;
-      link.querySelector('.resource-arrow').hidden = false;
-      availableResources++;
-    } catch {
-      console.warn('FlashSVG: invalid ' + key + ' URL; the resource remains unavailable.');
-    }
+  function setLanguage(lang) {
+    language = lang === 'zh' ? 'zh' : 'en';
+    document.documentElement.lang = language;
+    $$('[data-en][data-zh]').forEach(el => { el.textContent = el.dataset[language]; });
+    $('#language-toggle').textContent = isZh() ? 'EN' : '中文';
+    $('#language-toggle').setAttribute('aria-label', isZh() ? 'Switch to English' : '切换为中文');
+    $('#motion-toggle').setAttribute('aria-label', isZh() ? (paused ? '恢复动画' : '暂停动画') : (paused ? 'Resume animations' : 'Pause animations'));
+    $('#menu-toggle').setAttribute('aria-label', isZh() ? '展开导航' : 'Open navigation');
+    $('#figure-close').textContent = isZh() ? '关闭 ×' : 'Close ×';
+    document.title = isZh() ? 'FlashSVG — 快速且忠实的 SVG 生成' : 'FlashSVG — Fast and Faithful SVG Generation';
+    try { localStorage.setItem('flashsvg-language', language); } catch (_) {}
+    window.dispatchEvent(new CustomEvent('flashsvg:language', { detail: { language } }));
   }
-  link.addEventListener('click', event => {
-    if (link.getAttribute('aria-disabled') === 'true') event.preventDefault();
-  });
-}
-document.querySelector('#resource-note').textContent = availableResources === 3
-  ? 'Explore the project resources.'
-  : availableResources ? 'More project resources coming soon.' : 'Code, paper & model links coming soon.';
 
-const rows = [
-  {name:'GPT-6 Astra',note:'Closed API reference',className:'reference',icons:['0.970','0.972','0.021','—'],illustrations:['0.981','0.984','0.009','—']},
-  {name:'vtracer',note:'Non-learned vectorizer',className:'reference',icons:['0.982','0.987','0.009','—'],illustrations:['0.978','0.987','0.009','—']},
-  {name:'InternSVG-8B',icons:['0.863','0.819','0.161','81.0%'],illustrations:['0.840','0.842','0.155','59.0%']},
-  {name:'CTRL-S (8B)',icons:['0.899','0.822','0.142','100%'],illustrations:['0.854','0.836','0.159','100%']},
-  {name:'OmniSVG-4B',note:'Released model',icons:['0.776','0.837','0.197','63.0%'],illustrations:['0.707','0.834','0.245','40.0%']},
-  {name:'FlashSVG-4B',note:'Ours · three-seed mean',className:'ours',icons:['0.935','0.928','0.064','99.7%'],illustrations:['0.904','0.918','0.083','98.2%']}
-];
+  window.FlashSVGLab?.initSimulations();
+  window.FlashSVGLab?.initExplore();
+  $('#language-toggle').addEventListener('click', () => setLanguage(isZh() ? 'en' : 'zh'));
+  setLanguage(language);
 
-const textRows = [
-  {name:'GPT-6 Astra',note:'Closed API reference',className:'reference',icons:['0.308','9.79'],illustrations:['0.313','9.83']},
-  {name:'Claude Opus 5.5',note:'Closed API reference',className:'reference',icons:['0.304','9.71'],illustrations:['0.316','9.44']},
-  {name:'Qwen3.8-27B',icons:['0.307','8.87'],illustrations:['0.306','8.77']},
-  {name:'InternSVG-8B',icons:['0.282','5.67'],illustrations:['0.157','1.89']},
-  {name:'CTRL-S (8B)',icons:['0.295','6.92'],illustrations:['0.276','5.89']},
-  {name:'OmniSVG-4B',note:'Released model',icons:['0.271','4.46'],illustrations:['0.215','1.35']},
-  {name:'FlashSVG-4B',note:'Ours · three-seed mean',className:'ours',icons:['0.276','5.42'],illustrations:['0.223','2.54']}
-];
-const timings = {
-  image:{icons:[3.1,1.4,0.7],illustrations:[5.2,2.0,1.1]},
-  text:{icons:[2.3,1.4,1.0],illustrations:[6.0,3.4,3.3]}
-};
-let currentTask='image';
-let currentCategory='icons';
-function renderResults() {
-  const isImage=currentTask==='image';
-  const taskLabel=isImage?'Image-to-SVG':'Text-to-SVG';
-  const selectedRows=isImage?rows:textRows;
-  const headers=isImage?['Model / method','DINO ↑','SSIM ↑','LPIPS ↓','Candidate EOS ↑']:['Model / method','CLIP ↑','Judge fidelity ↑ (0–10)'];
-  const headRow=document.createElement('tr');
-  headers.forEach(label=>{const cell=document.createElement('th');cell.scope='col';cell.textContent=label;headRow.append(cell)});
-  document.querySelector('#results-head').replaceChildren(headRow);
-  const fragment=document.createDocumentFragment();
-  selectedRows.forEach(row=>{
-    const tr=document.createElement('tr');
-    tr.className=row.className||'';
-    const th=document.createElement('th');
-    th.scope='row';th.textContent=row.name;
-    if(row.note){const note=document.createElement('span');note.textContent=row.note;th.append(' ',note)}
-    tr.append(th);
-    row[currentCategory].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td)});
-    fragment.append(tr);
-  });
-  document.querySelector('#results-body').replaceChildren(fragment);
-  document.querySelector('#table-caption').textContent=`${taskLabel} ${currentCategory} · selected systems from Table 1`;
-  document.querySelector('#table-note').textContent=isImage
-    ?'Up to eight samples per case; the first non-empty render is scored, and cases without a valid output receive zero (LPIPS: 1). API references use one sample. EOS measures candidate termination, not render validity. FlashSVG values are means of three training seeds; baselines are single evaluations.'
-    :'Text-to-SVG uses CLIP ViT-B/32 similarity and GPT-6 Astra judge fidelity (0–10). Up to eight candidates; the first non-empty render is scored, and invalid cases score 0. API references use one sample. FlashSVG values are means of three training seeds; baselines are single evaluations. Text generation remains substantially weaker than image reconstruction.';
-  document.querySelector('#task-description').textContent=isImage?'Reconstruct the input image as an SVG.':'Generate an SVG from a caption prompt.';
-  document.querySelector('#evaluation-description').replaceChildren(document.createTextNode(`MMSVG-Bench · ${taskLabel.toLowerCase()}`),document.createElement('br'),document.createTextNode('Icons and illustrations reported separately.'));
-  document.querySelectorAll('[data-task]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.task===currentTask)));
-  document.querySelectorAll('[data-category]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.category===currentCategory)));
-  const values=timings[currentTask][currentCategory];
-  document.querySelectorAll('.bar-row').forEach((row,index)=>{
-    row.querySelector('.bar').style.setProperty('--bar-width',`${values[index]/values[0]*100}%`);
-    row.querySelector('strong').textContent=values[index].toFixed(1)+' s';
-  });
-  const chart=document.querySelector('#latency-chart');
-  chart.setAttribute('aria-label',`Rounded ${taskLabel} ${currentCategory} latency on the same fused engine: released OmniSVG-4B, ${values[0].toFixed(1)} seconds; FlashSVG autoregressive, ${values[1].toFixed(1)} seconds; FlashSVG verified, ${values[2].toFixed(1)} seconds.`);
-  chart.querySelector(':scope > p').textContent=`One H20 · batch 1 · ${taskLabel.toLowerCase()} ${currentCategory} · same fused engine. First 40 cases; rounded means from Table S8. Not API timings.`;
-  document.querySelector('#results-status').textContent=`Showing ${taskLabel.toLowerCase()} ${currentCategory} results and corresponding latency.`;
-}
-document.querySelectorAll('[data-task]').forEach(button=>button.addEventListener('click',()=>{currentTask=button.dataset.task;renderResults()}));
-document.querySelectorAll('[data-category]').forEach(button=>button.addEventListener('click',()=>{currentCategory=button.dataset.category;renderResults()}));
-renderResults();
+  function setMotion(value) {
+    paused = value;
+    document.documentElement.classList.toggle('motion-paused', paused);
+    $('#motion-toggle').textContent = paused ? '▷' : 'Ⅱ';
+    $('#motion-toggle').setAttribute('aria-pressed', String(paused));
+    $('#motion-toggle').setAttribute('aria-label', isZh() ? (paused ? '恢复动画' : '暂停动画') : (paused ? 'Resume animations' : 'Pause animations'));
+    window.dispatchEvent(new CustomEvent('flashsvg:motion', { detail: { paused } }));
+  }
+  $('#motion-toggle').addEventListener('click', () => setMotion(!paused));
+  reduce.addEventListener('change', e => setMotion(e.matches));
+  setMotion(paused);
 
-const dialog = document.querySelector('#figure-dialog');
-const dialogImage = document.querySelector('#dialog-image');
-let previousFocus;
-for (const button of document.querySelectorAll('[data-zoom]')) {
-  button.addEventListener('click', () => {
-    previousFocus = button;
-    dialogImage.src = button.dataset.zoom;
-    dialogImage.alt = button.querySelector('img').alt;
-    document.querySelector('#dialog-title').textContent = button.dataset.title;
+  function initHighlights() {
+    const tabs = $$('[data-highlight]');
+    const panels = ['faithful', 'termination', 'faster'];
+    const destinations = { faithful: 'showcase', termination: 'diagnosis', faster: 'decode' };
+    const hashPanels = { showcase: 'faithful', 'gallery-main': 'faithful', 'gallery-track': 'faithful', diagnosis: 'termination', 'termination-demo': 'termination', decode: 'faster', 'decode-demo': 'faster' };
+    let selected = '';
+    function select(name, { focus = false, updateHash = false } = {}) {
+      if (!panels.includes(name)) return;
+      tabs.forEach(tab => {
+        const active = tab.dataset.highlight === name;
+        tab.classList.toggle('active', active);
+        tab.setAttribute('aria-selected', String(active));
+        tab.tabIndex = active ? 0 : -1;
+      });
+      panels.forEach(panel => { $(`#panel-${panel}`).hidden = panel !== name; });
+      $('#highlights').dataset.activePanel = name;
+      if (updateHash) history.replaceState(null, '', `#${destinations[name]}`);
+      if (focus) $(`#highlight-${name}`).focus({ preventScroll: true });
+      if (selected !== name) {
+        selected = name;
+        window.dispatchEvent(new CustomEvent('flashsvg:highlight', { detail: { panel: name } }));
+      }
+    }
+    tabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => select(tab.dataset.highlight, { updateHash: true }));
+      tab.addEventListener('keydown', event => {
+        let next;
+        if (event.key === 'ArrowRight') next = (index + 1) % tabs.length;
+        else if (event.key === 'ArrowLeft') next = (index + tabs.length - 1) % tabs.length;
+        else if (event.key === 'Home') next = 0;
+        else if (event.key === 'End') next = tabs.length - 1;
+        if (next !== undefined) {
+          event.preventDefault();
+          select(tabs[next].dataset.highlight, { focus: true, updateHash: true });
+        }
+      });
+    });
+    document.addEventListener('click', event => {
+      const anchor = event.target.closest('a[href^="#"]');
+      if (!anchor) return;
+      const id = anchor.getAttribute('href').slice(1);
+      if (hashPanels[id]) select(hashPanels[id]);
+    });
+    window.addEventListener('hashchange', () => {
+      const panel = hashPanels[location.hash.slice(1)];
+      if (panel) select(panel);
+    });
+    select(hashPanels[location.hash.slice(1)] || 'faithful');
+  }
+  initHighlights();
+
+  // Reveal only after handlers are mounted, so static content is usable without JS.
+  document.documentElement.classList.add('js');
+  if ('IntersectionObserver' in window) {
+    const reveals = new IntersectionObserver(entries => entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      entry.target.classList.add('is-visible');
+      if (entry.target.contains($('#selection-demo'))) $('#selection-demo').classList.add('selecting');
+      reveals.unobserve(entry.target);
+    }), { threshold: 0.08 });
+    $$('.reveal').forEach(el => reveals.observe(el));
+    const navObserver = new IntersectionObserver(entries => entries.forEach(entry => {
+      if (entry.isIntersecting) $$('#navigation a').forEach(a => a.classList.toggle('active', a.hash === `#${entry.target.id}`));
+    }), { rootMargin: '-20% 0px -55% 0px', threshold: 0 });
+    $$('main section[id]').forEach(section => navObserver.observe(section));
+  } else $$('.reveal').forEach(el => el.classList.add('is-visible'));
+
+  const nav = $('#navigation');
+  $('#menu-toggle').addEventListener('click', () => {
+    const open = nav.classList.toggle('open');
+    $('#menu-toggle').setAttribute('aria-expanded', String(open));
+    $('#menu-toggle').textContent = open ? '×' : '☰';
+  });
+  $$('#navigation a').forEach(a => a.addEventListener('click', () => {
+    nav.classList.remove('open');
+    $('#menu-toggle').setAttribute('aria-expanded', 'false');
+    $('#menu-toggle').textContent = '☰';
+  }));
+
+  let scrolling = false;
+  function updateProgress() {
+    const max = document.documentElement.scrollHeight - innerHeight;
+    $('#reading-progress').style.width = `${max ? Math.min(100, scrollY / max * 100) : 0}%`;
+    scrolling = false;
+  }
+  addEventListener('scroll', () => { if (!scrolling) { requestAnimationFrame(updateProgress); scrolling = true; } }, { passive: true });
+  updateProgress();
+
+  const dialog = $('#figure-dialog');
+  let lastFigureTrigger;
+  $$('.figure-trigger').forEach(button => button.addEventListener('click', () => {
+    $('#figure-image').src = window.FlashSVGAssets?.[button.dataset.figure] || button.dataset.figure;
+    $('#figure-image').alt = button.dataset.caption;
+    $('#figure-caption').textContent = button.dataset.caption;
+    lastFigureTrigger = button;
     dialog.showModal();
-    document.body.style.overflow = 'hidden';
-    document.querySelector('#close-dialog').focus();
+    $('#figure-close').focus();
+  }));
+  $('#figure-close').addEventListener('click', () => dialog.close());
+  dialog.addEventListener('click', e => {
+    if (e.target === dialog) {
+      const b = dialog.getBoundingClientRect();
+      if (e.clientX < b.left || e.clientX > b.right || e.clientY < b.top || e.clientY > b.bottom) dialog.close();
+    }
   });
-}
-document.querySelector('#close-dialog').addEventListener('click', () => dialog.close());
-dialog.addEventListener('click', event => {
-  if (event.target !== dialog) return;
-  const rect = dialog.getBoundingClientRect();
-  if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close();
-});
-dialog.addEventListener('close', () => {
-  document.body.style.overflow = '';
-  previousFocus?.focus({preventScroll:true});
-});
+  dialog.addEventListener('close', () => lastFigureTrigger?.focus({ preventScroll: true }));
+
+  $('#selection-replay').addEventListener('click', () => {
+    const demo = $('#selection-demo');
+    demo.classList.remove('selecting');
+    requestAnimationFrame(() => requestAnimationFrame(() => demo.classList.add('selecting')));
+  });
+
+  const resultTabs = $$('[data-result-tab]');
+  function setResultTab(index, focus = false) {
+    resultTabs.forEach((b, i) => {
+      b.classList.toggle('active', i === index);
+      b.setAttribute('aria-selected', String(i === index));
+      b.tabIndex = i === index ? 0 : -1;
+      $(`#result-${b.dataset.resultTab}`).hidden = i !== index;
+    });
+    if (focus) resultTabs[index].focus();
+  }
+  resultTabs.forEach((b, i) => {
+    b.addEventListener('click', () => setResultTab(i));
+    b.addEventListener('keydown', e => {
+      let target;
+      if (e.key === 'ArrowRight') target = (i + 1) % resultTabs.length;
+      if (e.key === 'ArrowLeft') target = (i + resultTabs.length - 1) % resultTabs.length;
+      if (e.key === 'Home') target = 0;
+      if (e.key === 'End') target = resultTabs.length - 1;
+      if (target !== undefined) { e.preventDefault(); setResultTab(target, true); }
+    });
+  });
+
+  let toastTimer;
+  function toast(text) {
+    const el = $('#toast');
+    clearTimeout(toastTimer);
+    el.textContent = text;
+    el.classList.add('visible');
+    toastTimer = setTimeout(() => el.classList.remove('visible'), 3000);
+  }
+  $('#copy-reference').addEventListener('click', async () => {
+    const text = 'FlashSVG: Fast and Faithful SVG Generation via Block Diffusion. Anonymous research manuscript.';
+    try {
+      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(text);
+      else {
+        const area = document.createElement('textarea');
+        area.value = text; area.style.position = 'fixed'; area.style.opacity = '0';
+        document.body.append(area); area.select();
+        const success = document.execCommand('copy'); area.remove();
+        if (!success) throw new Error('Clipboard unavailable');
+      }
+      toast(isZh() ? '论文信息已复制' : 'Paper reference copied');
+    } catch (_) { toast(isZh() ? '请从完整论文中复制引用信息' : 'Please copy the reference from the manuscript'); }
+  });
+
+  // Ambient coordinates are an interface motif, not model outputs or measurements.
+  const canvas = $('#field-canvas');
+  const context = canvas.getContext('2d');
+  if (context) {
+    let width = 0, height = 0, frame = 0, visible = true, animation = 0, last = 0;
+    const particles = Array.from({ length: 34 }, (_, i) => ({ x: ((i * 137.5) % 100) / 100, y: ((i * 71.3) % 100) / 100, s: .3 + i % 4 * .12 }));
+    function size() {
+      width = canvas.clientWidth; height = canvas.clientHeight;
+      const ratio = Math.min(devicePixelRatio || 1, 1.5);
+      canvas.width = width * ratio; canvas.height = height * ratio;
+      context.setTransform(ratio, 0, 0, ratio, 0, 0);
+      paint();
+    }
+    function paint() {
+      context.clearRect(0, 0, width, height);
+      const points = particles.map(p => ({ x: (p.x * width + Math.sin(frame * .003 + p.y * 15) * 15), y: (p.y * height + Math.cos(frame * .002 + p.x * 10) * 12) }));
+      points.forEach((p, i) => {
+        context.fillStyle = i % 5 === 0 ? 'rgba(97,232,212,.48)' : 'rgba(106,166,255,.22)';
+        context.fillRect(p.x, p.y, i % 5 === 0 ? 2 : 1, i % 5 === 0 ? 2 : 1);
+        if (i % 3) return;
+        points.slice(i + 1).forEach(q => {
+          const d = Math.hypot(p.x - q.x, p.y - q.y);
+          if (d < 170) { context.strokeStyle = `rgba(87,140,181,${.08 * (1 - d / 170)})`; context.beginPath(); context.moveTo(p.x, p.y); context.lineTo(q.x, q.y); context.stroke(); }
+        });
+      });
+    }
+    function tick(time) {
+      animation = 0;
+      if (paused || reduce.matches || !visible || document.hidden) return;
+      if (time - last > 40) { frame++; paint(); last = time; }
+      animation = requestAnimationFrame(tick);
+    }
+    function restart() { if (!animation && !paused && !reduce.matches && visible && !document.hidden) animation = requestAnimationFrame(tick); }
+    window.addEventListener('flashsvg:motion', () => { if (paused && animation) { cancelAnimationFrame(animation); animation = 0; } else restart(); });
+    document.addEventListener('visibilitychange', restart);
+    addEventListener('resize', size, { passive: true });
+    if ('IntersectionObserver' in window) new IntersectionObserver(entries => { visible = entries[0].isIntersecting; restart(); }).observe(canvas);
+    size(); restart();
+  }
+})();
